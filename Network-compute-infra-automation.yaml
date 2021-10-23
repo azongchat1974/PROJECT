@@ -82,7 +82,7 @@
 
     - name: create ec2 instance using centOs7
       ec2_instance:
-        name: Ebrox-EC2
+        name: Ebrox_EC2
         key_name: "{{ keypair_name }}"
         vpc_subnet_id: "{{ Ebrox_Public_Subnet.subnet.id }}"
         region: "{{ aws_region }}"
