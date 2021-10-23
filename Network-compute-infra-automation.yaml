@@ -1,0 +1,89 @@
+---
+- name: This is a playbook to create network resources and use to launch centOs7 vm.
+  hosts: localhost
+  tasks:
+    - name: create a VPC
+      ec2_vpc_net:
+        name: Ebrox-VPC
+        cidr_block: "{{ vpc_cidr }}"
+        region: "{{ aws_region }}"
+        tenancy: default
+
+    - name: create a Public Subnet
+      ec2_vpc_subnet:
+        state: present
+        vpc_id: "{{ vpc_id }}"
+        cidr: "{{ PublicSubnet_cidr }}"
+        tags:
+          Name: Ebrox-Public-Subnet
+      register: Ebrox-Public-Subnet
+
+    - name: create a Private Subnet
+      ec2_vpc_subnet:
+        state: present
+        vpc_id: "{{ vpc_id }}"
+        cidr: "{{ PrivateSubnet_cidr }}"
+        tags:
+          Name: Ebrox-Private-Subnet
+      register: Ebrox-Private-Subnet
+
+    - name: create an Internet Gateway
+      ec2_vpc_igw:
+        vpc_id: "{{ vpc_id }}"
+        state: present
+      register: Ebrox-IGW
+
+
+    - name: Set up public route table
+      ec2_vpc_route_table:
+        vpc_id: "{{ vpc_id }}"
+        region: "{{ aws_region }}"
+        tags:
+          Name: Ebrox-Public-Subnet-route-table
+        subnets:
+          - "{{ Ebrox-Public-Subnet.subnet.id }}"
+        routes:
+          - dest: 0.0.0.0/0
+            gateway_id: "{{ Ebrox-IGW.gateway_id }}"
+
+    - name: Set up private route table
+      ec2_vpc_route_table:
+        vpc_id: "{{ vpc_id }}"
+        region: "{{ aws_region }}"
+        tags:
+          Name: Ebrox-Private-Subnet-route-table
+        subnets:
+          - "{{ Ebrox-Private-Subnet.subnet.id }}"
+        routes:
+          - dest: 0.0.0.0/0
+            gateway_id: "{{ Ebrox-IGW.gateway_id }}"
+
+    - name: Set up security group
+      ec2_group:
+        name: Ebrox-VPC-SG
+        description: Ebrox security group
+        vpc_id: "{{ vpc_id }}"
+        region: "{{ aws_region }}"
+        rules:
+          - proto: tcp
+            ports:
+              - 80
+            cidr_ip: 0.0.0.0/0
+            rule_desc: allow all on port 80
+
+          - proto: tcp
+            ports:
+              - 22
+            cidr_ip: 0.0.0.0/0
+            rule_desc: allow all on port 22
+
+    - name: create ec2 instance using centOs7
+      ec2_instance:
+        name: Ebrox-EC2
+        key_name: "{{ keypair_name }}"
+        vpc_subnet_id: Ebrox-Public-Subnet
+        instance_type: t2.micro
+        security_group: "{{ securitygroup_name }}"
+        network:
+          assign_public_ip: true
+        image_id: "{{ image }}"
