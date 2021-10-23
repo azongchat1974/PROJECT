@@ -8,6 +8,7 @@
         cidr_block: "{{ vpc_cidr }}"
         region: "{{ aws_region }}"
         tenancy: default
+      register: Ebrox-VPC
 
     - name: create a Public Subnet
       ec2_vpc_subnet:
